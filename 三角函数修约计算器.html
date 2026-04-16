@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角函数有效数字计算</title>
+    <style>
+        body { font-family: -apple-system, sans-serif; padding: 20px; background: #f0f2f5; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 100%; max-width: 420px; margin-top: 40px; }
+        h2 { text-align: center; color: #1a1a1a; margin-bottom: 20px; font-size: 1.3rem; }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; font-size: 14px; }
+        .row { display: flex; gap: 10px; }
+        select, input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline: none; background: white; }
+        select:focus, input:focus { border-color: #007aff; }
+        button { width: 100%; padding: 14px; background: #007aff; color: white; border: none; border-radius: 8px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:active { background: #0056b3; transform: scale(0.98); }
+        #result { margin-top: 25px; padding-top: 20px; border-top: 1px dashed #ccc; }
+        .res-line { display: flex; justify-content: space-between; margin-bottom: 8px; font-family: monospace; font-size: 14px; color: #666; }
+        .highlight { color: #d9534f; font-weight: bold; font-size: 1.5rem; text-align: center; margin-top: 10px; display: block; }
+        .logic-hint { font-size: 12px; color: #999; text-align: center; margin-bottom: 10px; }
+        footer { margin-top: auto; padding: 20px; color: #aaa; font-size: 12px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2 id="mainTitle">正弦 (sin) 有效数字辅助</h2>
+    <div class="logic-hint" id="logicHint">判定规则：对比 θ 与 θ + 1'</div>
+    
+    <div class="input-group">
+        <label>选择函数</label>
+        <select id="funcType" onchange="updateUI()">
+            <option value="sin">正弦 (sin)</option>
+            <option value="cos">余弦 (cos)</option>
+            <option value="tan">正切 (tan)</option>
+            <option value="cot">余切 (cot)</option>
+        </select>
+    </div>
+
+    <div class="input-group">
+        <label>角度输入</label>
+        <div class="row">
+            <input type="number" id="deg" placeholder="度 °" step="any">
+            <input type="number" id="min" placeholder="分 '" step="any">
+        </div>
+    </div>
+
+    <button onclick="calculate()">计算</button>
+
+    <div id="result" style="display:none;">
+        <div class="res-line"><span id="lab1">f(θ):</span> <span id="val1"></span></div>
+        <div class="res-line"><span id="lab2">f(θ±1'):</span> <span id="val2"></span></div>
+        <div class="res-line"><span>保留位数:</span> <span id="diffPos"></span> 位小数</div>
+        <div class="highlight" id="final"></div>
+    </div>
+</div>
+
+<footer>
+    作者Auidx，使用gemini创建
+</footer>
+
+<script>
+// 动态标题功能
+document.addEventListener("visibilitychange", function() {
+    if (document.hidden) {
+        document.title = "这是什么？点一下";
+    } else {
+        document.title = "三角函数有效数字计算";
+    }
+});
+
+function updateUI() {
+    const type = document.getElementById('funcType').value;
+    const titles = {
+        'sin': '正弦 (sin) 有效数字辅助',
+        'cos': '余弦 (cos) 有效数字辅助',
+        'tan': '正切 (tan) 有效数字辅助',
+        'cot': '余切 (cot) 有效数字辅助'
+    };
+    const hints = {
+        'sin': '判定规则：对比 θ 与 θ + 1\'',
+        'tan': '判定规则：对比 θ 与 θ + 1\'',
+        'cos': '判定规则：对比 θ 与 θ - 1\'',
+        'cot': '判定规则：对比 θ 与 θ - 1\''
+    };
+    document.getElementById('mainTitle').innerText = titles[type];
+    document.getElementById('logicHint').innerText = hints[type];
+    document.getElementById('result').style.display = 'none';
+}
+
+function getFuncValue(type, rad) {
+    switch(type) {
+        case 'sin': return Math.sin(rad);
+        case 'cos': return Math.cos(rad);
+        case 'tan': return Math.tan(rad);
+        case 'cot': return 1 / Math.tan(rad);
+        default: return 0;
+    }
+}
+
+function roundFive(num, precision) {
+    const factor = Math.pow(10, precision);
+    const val = num * factor;
+    const integerPart = Math.floor(Math.round(val * 1e10) / 1e10);
+    const fractionalPart = Math.round((val - integerPart) * 1e10) / 1e10;
+
+    if (fractionalPart < 0.5) {
+        return integerPart / factor;
+    } else if (fractionalPart > 0.5) {
+        return (integerPart + 1) / factor;
+    } else {
+        return (integerPart % 2 === 0) ? (integerPart / factor) : ((integerPart + 1) / factor);
+    }
+}
+
+function calculate() {
+    const type = document.getElementById('funcType').value;
+    const deg = parseFloat(document.getElementById('deg').value || 0);
+    const min = parseFloat(document.getElementById('min').value || 0);
+    
+    const theta = (deg + min / 60) * (Math.PI / 180);
+    
+    let thetaCompare;
+    if (type === 'sin' || type === 'tan') {
+        thetaCompare = (deg + (min + 1) / 60) * (Math.PI / 180);
+        document.getElementById('lab2').innerText = "f(θ + 1'):";
+    } else {
+        thetaCompare = (deg + (min - 1) / 60) * (Math.PI / 180);
+        document.getElementById('lab2').innerText = "f(θ - 1'):";
+    }
+    
+    const v1 = getFuncValue(type, theta);
+    const v2 = getFuncValue(type, thetaCompare);
+    
+    const s1_str = v1.toFixed(12);
+    const s2_str = v2.toFixed(12);
+    
+    let precision = 0;
+    for (let i = 2; i < s1_str.length; i++) {
+        if (s1_str[i] !== s2_str[i]) {
+            precision = i - 1;
+            break;
+        }
+    }
+
+    const roundedValue = roundFive(v1, precision);
+    const finalDisplay = roundedValue.toFixed(precision);
+
+    document.getElementById('lab1').innerText = `f(θ) [${type}]:`;
+    document.getElementById('val1').innerText = v1.toFixed(8);
+    document.getElementById('val2').innerText = v2.toFixed(8);
+    document.getElementById('diffPos').innerText = precision;
+    document.getElementById('final').innerText = finalDisplay;
+    document.getElementById('result').style.display = 'block';
+}
+</script>
+
+</body>
+</html>
